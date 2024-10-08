@@ -1,47 +1,35 @@
-# #!/usr/bin/env python
-# import pika, sys, os
-# import json
-# import logging
-# import pymongo
-#
-# # Connect to MongoDB database
-# client = pymongo.MongoClient("mongodb://mongodb:27017/")
-# db = client["CCRabitMQ"]
-# collection = db["Item"]
-#
-# def main():
-#     connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
-#     channel = connection.channel()
-#
-#     channel.queue_declare(queue='item_creation')
-#     print("In main")
-#     def callback(ch, method, properties, body):
-#         # Parse incoming message
-#         body = body.decode()
-#         body = json.loads(body)
-#         # message = json.loads(body)
-#         record = {
-#             "id": body['id'],
-#             "name": body['name'],
-#             "quantity": body['quantity'],
-#             "amount":body['amount'],
-#         }
-#         collection.insert_one(record)
-#
-#         # Acknowledge the message
-#         #ch.basic_ack(delivery_tag=method.delivery_tag)
-#
-#     channel.basic_consume(queue='item_creation', on_message_callback=callback, auto_ack=True)
-#
-#     print(' [*] Waiting for messages. To exit press CTRL+C')
-#     channel.start_consuming()
-#
-# if __name__ == '__main__':
-#     try:
-#         main()
-#     except KeyboardInterrupt:
-#         print('Interrupted')
-#         try:
-#             sys.exit(0)
-#         except SystemExit:
-#             sys._exit(0)
+
+#!/usr/bin/env python
+import pika, sys, os
+import json
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+channel = connection.channel()
+
+channel.queue_declare(queue='ocr_health')
+channel.queue_declare(queue='ocr_health_return')
+
+
+def callback(ch, method, properties, body):
+    print(" [x] Received %r" % body)
+    print(" [x] Done")
+    # ch.basic_ack(delivery_tag = method.delivery_tag)
+    message = '200 OK'
+    resp = json.dumps(message,default='str')
+    channel.basic_publish(exchange='', routing_key='ocr_health_return', body=resp)
+
+
+def main():
+    channel.basic_consume(queue='ocr_health', on_message_callback=callback, auto_ack=True)
+
+    print(' [*] Waiting for messages. To exit press CTRL+C')
+    channel.start_consuming()
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('Interrupted')
+        try:
+            sys.exit(0)
+        except SystemExit:
+            os._exit(0)
