@@ -30,7 +30,7 @@ channel.queue_declare(queue='statute_return')
 
 
 @app.route('/')
-def index():
+def login():
     return render_template('login.html')
 
 @app.route('/admin')
