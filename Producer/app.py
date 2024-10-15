@@ -17,17 +17,29 @@ channel = connection.channel()
 
 channel.queue_declare(queue='health_check')
 channel.queue_declare(queue='health_check_return')
+channel.queue_declare(queue='summary')
+channel.queue_declare(queue='summary_return')
+channel.queue_declare(queue='contract')
+channel.queue_declare(queue='contract_return')
+channel.queue_declare(queue='precedent')
+channel.queue_declare(queue='precedent_return')
+channel.queue_declare(queue='statute')
+channel.queue_declare(queue='statute_return')
 
-channel.queue_declare(queue='item_creation')
-channel.queue_declare(queue='order_processing')
-channel.queue_declare(queue='return_order_processing')
-channel.queue_declare(queue='stock_management')
+
 
 
 @app.route('/')
 def index():
+    return render_template('login.html')
+
+@app.route('/admin')
+def admin():
     return render_template('index.html')
 
+@app.route('/users')
+def user():
+    return render_template('user.html')
 # Health check endpoint
 @app.route('/health_check', methods=['GET'])
 def health():
@@ -50,60 +62,100 @@ def health_check():
     return g.get('healthres', 'RabitMQ Service Not working')
 
 
-# Insert record endpoint
-@app.route('/insert_record', methods=['GET'])
-def insert_record():
 
-    return render_template('insert.html', message='Record Inserted Successfully!')
-
-# Insert record endpoint
-@app.route('/insert_record_actually', methods=['POST'])
-def insert_record_actually():
-    name = request.form['name']
-    id = request.form['id']
-    quantity = request.form['quantity']
-    amount = request.form['amount']
-    message = json.dumps({'name': name, 'id': id, 'quantity': quantity,'amount':amount})
+# Generate summary endpoint
+@app.route('/summary', methods=['POST'])
+def summary():
+    inp_data = request.form['inputData']
+    message = json.dumps({'inputData': inp_data})
     logging.info(message)
     # Publish message to insert_record queue
-    channel.basic_publish(exchange='', routing_key='item_creation', body=message)
+    channel.basic_publish(exchange='', routing_key='summary', body=message)
 
-    return render_template('insert.html', message='Record Inserted Successfully!')
-
-# Delete record endpoint
-@app.route('/delete_record', methods=['GET'])
-def delete_record():
-    return render_template('delete.html', message='Record Deleted Successfully!')
-
-@app.route('/delete_record_actually', methods=['POST'])
-def delete_record_actually():
-    id = request.form['id']
-    quantity = request.form['quantity']
-    message = json.dumps({'id': id, 'quantity':quantity})
-    logging.info(message)
-    # Publish message to delete_record queue
-    channel.basic_publish(exchange='', routing_key='stock_management', body=message)
-    return render_template('delete.html', message='Record Deleted Successfully!')
-
-# Read database endpoint
-@app.route('/read_database', methods=['GET'])
-def read_database():
-    # Publish message to read_database queue
-    return render_template('read.html', message='Read Database message sent!')
-
-@app.route('/read_database_actually', methods=['GET'])
-def read_database_actually():
     def callback(ch, method, properties, body):
         body = body.decode()
         data = json.loads(body)
-        g.newdata = json.dumps(data, default=str)
+        g.summaryres = json.dumps(data, default=str)
         channel.stop_consuming()
 
-    channel.basic_publish(exchange='', routing_key='order_processing', body='')
-    channel.basic_consume(queue='return_order_processing', on_message_callback=callback, auto_ack=True)
+    channel.basic_consume(queue='summary_return', on_message_callback=callback, auto_ack=True)
     channel.start_consuming()
+    return g.get('summaryres', 'No data received')
 
-    return g.get('newdata', 'No data received')
+#
+@app.route('/contract', methods=['POST'])
+def contract():
+    inp_data = request.form['inputData']
+    message = json.dumps({'inputData': inp_data})
+    logging.info(message)
+    # Publish message to insert_record queue
+    channel.basic_publish(exchange='', routing_key='contract', body=message)
+
+    def callback(ch, method, properties, body):
+        body = body.decode()
+        data = json.loads(body)
+        g.contractres = json.dumps(data, default=str)
+        channel.stop_consuming()
+
+    channel.basic_consume(queue='contract_return', on_message_callback=callback, auto_ack=True)
+    channel.start_consuming()
+    return g.get('contractres', 'No data received')
+
+@app.route('/precedent', methods=['POST'])
+def precedent():
+    inp_data = request.form['inputData']
+    message = json.dumps({'inputData': inp_data})
+    logging.info(message)
+    # Publish message to insert_record queue
+    channel.basic_publish(exchange='', routing_key='precedent', body=message)
+
+    def callback(ch, method, properties, body):
+        body = body.decode()
+        data = json.loads(body)
+        g.precedentres = json.dumps(data, default=str)
+        channel.stop_consuming()
+
+    channel.basic_consume(queue='precedent_return', on_message_callback=callback, auto_ack=True)
+    channel.start_consuming()
+    return g.get('precedentres', 'No data received')
+
+@app.route('/statute', methods=['POST'])
+def statute():
+    inp_data = request.form['inputData']
+    message = json.dumps({'inputData': inp_data})
+    logging.info(message)
+    # Publish message to insert_record queue
+    channel.basic_publish(exchange='', routing_key='statute', body=message)
+
+    def callback(ch, method, properties, body):
+        body = body.decode()
+        data = json.loads(body)
+        g.statuteres = json.dumps(data, default=str)
+        channel.stop_consuming()
+
+    channel.basic_consume(queue='statute_return', on_message_callback=callback, auto_ack=True)
+    channel.start_consuming()
+    return g.get('statuteres', 'No data received')
+
+# Read database endpoint
+# @app.route('/read_database', methods=['GET'])
+# def read_database():
+#     # Publish message to read_database queue
+#     return render_template('read.html', message='Read Database message sent!')
+#
+# @app.route('/read_database_actually', methods=['GET'])
+# def read_database_actually():
+#     def callback(ch, method, properties, body):
+#         body = body.decode()
+#         data = json.loads(body)
+#         g.newdata = json.dumps(data, default=str)
+#         channel.stop_consuming()
+#
+#     channel.basic_publish(exchange='', routing_key='order_processing', body='')
+#     channel.basic_consume(queue='return_order_processing', on_message_callback=callback, auto_ack=True)
+#     channel.start_consuming()
+#
+#     return g.get('newdata', 'No data received')
 
 
 if __name__ == '__main__':
