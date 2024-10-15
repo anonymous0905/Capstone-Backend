@@ -21,6 +21,8 @@ channel.queue_declare(queue='summary')
 channel.queue_declare(queue='summary_return')
 channel.queue_declare(queue='contract')
 channel.queue_declare(queue='contract_return')
+channel.queue_declare(queue='precedent')
+channel.queue_declare(queue='precedent_return')
 
 channel.queue_declare(queue='item_creation')
 channel.queue_declare(queue='order_processing')
@@ -99,6 +101,24 @@ def contract():
     channel.basic_consume(queue='contract_return', on_message_callback=callback, auto_ack=True)
     channel.start_consuming()
     return g.get('contractres', 'No data received')
+
+@app.route('/precedent', methods=['POST'])
+def precedent():
+    inp_data = request.form['inputData']
+    message = json.dumps({'inputData': inp_data})
+    logging.info(message)
+    # Publish message to insert_record queue
+    channel.basic_publish(exchange='', routing_key='precedent', body=message)
+
+    def callback(ch, method, properties, body):
+        body = body.decode()
+        data = json.loads(body)
+        g.precedentres = json.dumps(data, default=str)
+        channel.stop_consuming()
+
+    channel.basic_consume(queue='precedent_return', on_message_callback=callback, auto_ack=True)
+    channel.start_consuming()
+    return g.get('precedentres', 'No data received')
 
 # Read database endpoint
 # @app.route('/read_database', methods=['GET'])
