@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-container {
+            background-color: #fff;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            width: 100%;
+            max-width: 320px;
+            text-align: center;
+            margin: auto;
+            position: relative;
+
+            transform: translateY(-50%);
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <h2>Login</h2>
+    <form id="loginForm">
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+    </form>
+</div>
+
+<script>
+    // Example hardcoded credentials
+    const users = {
+        "admin": { password: "admin1234", role: "admin" },
+        "user": { password: "user1234", role: "user" }
+    };
+
+    document.getElementById('loginForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        if (users[username] && users[username].password === password) {
+            if (users[username].role === 'admin') {
+                window.location.href = "/admin";  // Redirect to admin page
+            } else if (users[username].role === 'user') {
+                window.location.href = "/users";  // Redirect to user page
+            }
+        } else {
+            alert("Invalid username or password");
+        }
+    });
+</script>
+
+</body>
+</html>

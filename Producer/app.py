@@ -17,6 +17,9 @@ channel = connection.channel()
 
 channel.queue_declare(queue='health_check')
 channel.queue_declare(queue='health_check_return')
+channel.queue_declare(queue='summary')
+channel.queue_declare(queue='summary_return')
+
 
 channel.queue_declare(queue='item_creation')
 channel.queue_declare(queue='order_processing')
@@ -26,8 +29,15 @@ channel.queue_declare(queue='stock_management')
 
 @app.route('/')
 def index():
+    return render_template('login.html')
+
+@app.route('/admin')
+def admin():
     return render_template('index.html')
 
+@app.route('/users')
+def user():
+    return render_template('user.html')
 # Health check endpoint
 @app.route('/health_check', methods=['GET'])
 def health():
@@ -50,31 +60,30 @@ def health_check():
     return g.get('healthres', 'RabitMQ Service Not working')
 
 
-# Insert record endpoint
-@app.route('/insert_record', methods=['GET'])
-def insert_record():
 
-    return render_template('insert.html', message='Record Inserted Successfully!')
-
-# Insert record endpoint
-@app.route('/insert_record_actually', methods=['POST'])
+# Generate summary endpoint
+@app.route('/summary', methods=['POST'])
 def insert_record_actually():
-    name = request.form['name']
-    id = request.form['id']
-    quantity = request.form['quantity']
-    amount = request.form['amount']
-    message = json.dumps({'name': name, 'id': id, 'quantity': quantity,'amount':amount})
+    inp_data = request.form['inputData']
+    # id = request.form['id']
+    # quantity = request.form['quantity']
+    # amount = request.form['amount']
+    message = json.dumps({'inputData': inp_data})
     logging.info(message)
     # Publish message to insert_record queue
-    channel.basic_publish(exchange='', routing_key='item_creation', body=message)
+    channel.basic_publish(exchange='', routing_key='summary', body=message)
 
-    return render_template('insert.html', message='Record Inserted Successfully!')
+    def callback(ch, method, properties, body):
+        body = body.decode()
+        data = json.loads(body)
+        g.summaryres = json.dumps(data, default=str)
+        channel.stop_consuming()
 
-# Delete record endpoint
-@app.route('/delete_record', methods=['GET'])
-def delete_record():
-    return render_template('delete.html', message='Record Deleted Successfully!')
+    channel.basic_consume(queue='summary_return', on_message_callback=callback, auto_ack=True)
+    channel.start_consuming()
+    return g.get('summaryres', 'No data received')
 
+#
 @app.route('/delete_record_actually', methods=['POST'])
 def delete_record_actually():
     id = request.form['id']
