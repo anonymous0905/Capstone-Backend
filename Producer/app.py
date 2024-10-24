@@ -30,7 +30,7 @@ channel.queue_declare(queue='statute_return')
 
 
 @app.route('/')
-def index():
+def login():
     return render_template('login.html')
 
 @app.route('/admin')
@@ -43,8 +43,9 @@ def user():
 # Health check endpoint
 @app.route('/health_check', methods=['GET'])
 def health():
-    return render_template('health.html', message='Record Inserted Successfully!')
+    return render_template('health.html', message='')
 
+#Health Check endpoint
 @app.route('/health_check_actually', methods=['GET'])
 def health_check():
     message = 'RabbitMQ connection established successfully'
@@ -53,7 +54,7 @@ def health_check():
         body = body.decode()
         data = json.loads(body)
         g.healthres = json.dumps(data, default=str)
-        channel.stop_consuming()
+        #channel.stop_consuming()
 
     channel.basic_publish(exchange='', routing_key='health_check', body=message)
     channel.basic_consume(queue='health_check_return', on_message_callback=callback, auto_ack=True)
@@ -82,7 +83,7 @@ def summary():
     channel.start_consuming()
     return g.get('summaryres', 'No data received')
 
-#
+#Contract verification endpoint
 @app.route('/contract', methods=['POST'])
 def contract():
     inp_data = request.form['inputData']
@@ -101,6 +102,7 @@ def contract():
     channel.start_consuming()
     return g.get('contractres', 'No data received')
 
+#Precedent search endpoint
 @app.route('/precedent', methods=['POST'])
 def precedent():
     inp_data = request.form['inputData']
@@ -119,6 +121,7 @@ def precedent():
     channel.start_consuming()
     return g.get('precedentres', 'No data received')
 
+#Statute verification endpoint
 @app.route('/statute', methods=['POST'])
 def statute():
     inp_data = request.form['inputData']
