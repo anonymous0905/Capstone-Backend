@@ -2,7 +2,7 @@
 #!/usr/bin/env python
 import pika, sys, os
 import json
-
+import requests
 from pyexpat.errors import messages
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
@@ -32,10 +32,27 @@ def callback_summary(ch, method, properties, body):
     message = json.loads(body)
     print(message)
     text = message['inputData']
-    print(text)
+    #print(text)
+
+    API_TOKEN = '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'
+    API_URL = "https://mz4m63dt514ihp7b.us-east-1.aws.endpoints.huggingface.cloud"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    def query(payload):
+        response = requests.post(API_URL, headers=headers, json=payload)
+        return response.json()
+
+    output = query({
+        "inputs": text,
+        "parameters": {}
+    })
     #TODO: Implement summarization logic here
-    message = '200 OK - Summary generated successfully'
-    resp = json.dumps(message,default='str')
+    #message = '200 OK - Summary generated successfully'
+    resp = json.dumps(output,default='str')
     channel.basic_publish(exchange='', routing_key='summary_return', body=resp)
 
 def main():
