@@ -30,11 +30,11 @@ def callback_summary(ch, method, properties, body):
     # ch.basic_ack(delivery_tag = method.delivery_tag)
     #extract the message from the body
     message = json.loads(body)
-    print(message)
+    #print(message)
     text = message['inputData']
     #print(text)
 
-    API_TOKEN = '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'
+    API_TOKEN = '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'
     API_URL = "https://mz4m63dt514ihp7b.us-east-1.aws.endpoints.huggingface.cloud"
     headers = {
         "Accept": "application/json",
@@ -43,6 +43,7 @@ def callback_summary(ch, method, properties, body):
     }
 
     def query(payload):
+        print("message sent")
         response = requests.post(API_URL, headers=headers, json=payload)
         return response.json()
 
@@ -50,7 +51,7 @@ def callback_summary(ch, method, properties, body):
         "inputs": text,
         "parameters": {}
     })
-    #TODO: Implement summarization logic here
+    print("message received")
     #message = '200 OK - Summary generated successfully'
     resp = json.dumps(output,default='str')
     channel.basic_publish(exchange='', routing_key='summary_return', body=resp)
