@@ -1,6 +1,6 @@
 import logging
 import time
-from flask import Flask, request, render_template, g
+from flask import Flask, request, render_template, g, jsonify
 import pika
 import json
 import queue  # Import the queue module
@@ -120,6 +120,7 @@ def precedent():
     channel.basic_consume(queue='precedent_return', on_message_callback=callback, auto_ack=True)
     channel.start_consuming()
     return g.get('precedentres', 'No data received')
+
 
 #Statute verification endpoint
 @app.route('/statute', methods=['POST'])

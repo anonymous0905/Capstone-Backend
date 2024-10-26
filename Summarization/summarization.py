@@ -27,10 +27,7 @@ def callback(ch, method, properties, body):
 def callback_summary(ch, method, properties, body):
     print(" [x] Received %r" % body)
     print(" [x] Done")
-    # ch.basic_ack(delivery_tag = method.delivery_tag)
-    #extract the message from the body
     message = json.loads(body)
-    print(message)
     text = message['inputData']
     #print(text)
 
@@ -52,6 +49,7 @@ def callback_summary(ch, method, properties, body):
     })
     #TODO: Implement summarization logic here
     #message = '200 OK - Summary generated successfully'
+    print(output)
     resp = json.dumps(output,default='str')
     channel.basic_publish(exchange='', routing_key='summary_return', body=resp)
 
