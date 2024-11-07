@@ -145,7 +145,10 @@ def callback_precedent(ch, method, properties, body):
     channel.basic_consume(queue='summary_return', on_message_callback=callbackr, auto_ack=True)
 
     # copy the summary response to a variable
-    query = g.get('summaryres', 'Summary Not Found')
+    resp = g.get('summaryres', 'Summary Not Found')
+    # extract the value of the key 'summary' from the response
+    parsed_data = json.loads(resp)
+    query = parsed_data["summary"]
     query = query.replace("*", "")
     query = anonymize_text(query)
     query = preprocess_text(query)

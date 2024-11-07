@@ -70,7 +70,7 @@ def summary():
     inp_data = request.json['inputData']
     message = json.dumps({'inputData': inp_data})
     logging.info(message)
-    print(message)
+    #print(message)
     # Publish message to insert_record queue
     channel.basic_publish(exchange='', routing_key='summary', body=message)
 
@@ -82,6 +82,13 @@ def summary():
 
     channel.basic_consume(queue='summary_return', on_message_callback=callback, auto_ack=True)
     channel.start_consuming()
+    #qry = g.get('summaryres', 'No data received')
+    #print(qry)
+    #parsed_data = json.loads(qry)
+
+    # Extract the "summary" text
+    #summary_text = parsed_data["summary"]
+    #print(summary_text)
     return g.get('summaryres', 'No data received')
 
 #Contract verification endpoint
