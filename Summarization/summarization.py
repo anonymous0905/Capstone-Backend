@@ -31,7 +31,7 @@ def callback_summary(ch, method, properties, body):
     text = message['inputData']
     #print(text)
 
-    API_TOKEN = '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'
+    API_TOKEN = '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'
     API_URL = "https://mz4m63dt514ihp7b.us-east-1.aws.endpoints.huggingface.cloud"
     headers = {
         "Accept": "application/json",

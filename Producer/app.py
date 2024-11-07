@@ -3,7 +3,7 @@ import time
 from flask import Flask, request, render_template, g, jsonify
 import pika
 import json
-import queue  # Import the queue module
+import queue
 
 app = Flask(
     __name__,
@@ -67,7 +67,7 @@ def health_check():
 # Generate summary endpoint
 @app.route('/summary', methods=['POST'])
 def summary():
-    inp_data = request.form['inputData']
+    inp_data = request.json['inputData']
     message = json.dumps({'inputData': inp_data})
     logging.info(message)
     # Publish message to insert_record queue
@@ -108,7 +108,6 @@ def precedent():
     inp_data = request.form['inputData']
     message = json.dumps({'inputData': inp_data})
     logging.info(message)
-    # Publish message to insert_record queue
     channel.basic_publish(exchange='', routing_key='precedent', body=message)
 
     def callback(ch, method, properties, body):

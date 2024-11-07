@@ -6,14 +6,43 @@ import torch
 from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
-
+import pandas as pd
+import re
+from transformers import pipeline
+import spacy
 device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
 
+nlp = spacy.load("en_core_web_sm")
 try:
     embedding_model = SentenceTransformer("thenlper/gte-large").to(device)
 except Exception as e:
     print(f"Error loading model: {e}")
-    
+
+ner_model = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english", grouped_entities=True)
+def detect_names_single_case(text):
+    ner_results = ner_model(text)
+
+    processed_names = set()
+    for entity in ner_results:
+        if entity["entity_group"] == "PER":
+            tokens = [token for token in entity["word"].replace(".", " ").split() if len(token) > 1]
+            processed_names.update(tokens)
+
+    return list(processed_names)
+
+def anonymize_text(query):
+    detected_names = detect_names_single_case(query)
+    detected_names.sort(key=len, reverse=True)
+    for idx, name in enumerate(detected_names):
+        query = re.sub(r'\b' + re.escape(name) + r'\b', chr(65 + idx), query, flags=re.IGNORECASE)
+
+    return query
+
+def preprocess_text(text):
+    doc = nlp(text)
+    processed_words = [token.lemma_.lower() for token in doc if not token.is_stop and not token.is_punct]
+    return ' '.join(processed_words)
+
 def get_mongo_client(mongo_uri):
     try:
         client = pymongo.MongoClient(mongo_uri)
@@ -101,10 +130,13 @@ def callback_precedent(ch, method, properties, body):
     print(" [x] Done")
     message = json.loads(body)
     query = str(message['inputData'])
+    #TODO Summarisation CALL
     query = query.replace("*", "")
+    query = anonymize_text(query)
+    query = preprocess_text(query)
     search_results = get_search_result_faiss(query, faiss_index, document_ids, collection)
     message = '200 OK - precedent search successful'
-    resp = json.dumps(search_results,default='str')
+    resp = json.dumps(search_results)
     channel.basic_publish(exchange='', routing_key='precedent_return', body=resp)
 
 def main():
