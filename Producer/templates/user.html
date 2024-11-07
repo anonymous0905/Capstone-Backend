@@ -75,48 +75,48 @@
     <div id="output"></div>
 
     <script>
-        function sendData(route) {
-            const inputData = document.getElementById("inputData").value;
-            fetch(route, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({ inputData: inputData }),
-            })
-            .then(response => response.json())
-            .then(result => {
-                console.log("Success:", result);
-                const outputDiv = document.getElementById("output");
-                outputDiv.innerHTML = ""; // Clear previous output
-    
-                // Check if the request is for the '/precedent' route
-                if (route === '/precedent') {
-                    // Handle dictionary response for precedent search
-                    if (typeof result === 'object' && result !== null) {
-                        for (const value of Object.values(result)) {
-                            const textBox = document.createElement("textarea");
-                            textBox.className = "response-box";
-                            textBox.value = value;  // Display only the value in separate text boxes
-                            outputDiv.appendChild(textBox);
-                        }
-                    } else {
-                        outputDiv.innerText = "Unexpected response format for precedent search";
+    function sendData(route) {
+        const inputData = document.getElementById("inputData").value;
+        fetch(route, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"  // Set content type to JSON
+            },
+            body: JSON.stringify({ inputData: inputData })  // Convert data to JSON format
+        })
+        .then(response => response.json())
+        .then(result => {
+            console.log("Success:", result);
+            const outputDiv = document.getElementById("output");
+            outputDiv.innerHTML = ""; // Clear previous output
+
+            if (route === '/precedent') {
+                // Handle dictionary response for precedent search
+                if (typeof result === 'object' && result !== null) {
+                    for (const value of Object.values(result)) {
+                        const textBox = document.createElement("textarea");
+                        textBox.className = "response-box";
+                        textBox.value = value;  // Display only the value in separate text boxes
+                        outputDiv.appendChild(textBox);
                     }
                 } else {
-                    // Handle other routes with a plain text output
-                    const textBox = document.createElement("textarea");
-                    textBox.className = "response-box";
-                    textBox.value = JSON.stringify(result, null, 2);  // Just stringify the result for other routes
-                    outputDiv.appendChild(textBox);
+                    outputDiv.innerText = "Unexpected response format for precedent search";
                 }
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                document.getElementById("output").innerText = "Error: " + error;
-            });
-        }
-    </script>    
+            } else {
+                // Handle other routes with a plain text output
+                const textBox = document.createElement("textarea");
+                textBox.className = "response-box";
+                textBox.value = JSON.stringify(result, null, 2);  // Just stringify the result for other routes
+                outputDiv.appendChild(textBox);
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            document.getElementById("output").innerText = "Error: " + error;
+        });
+    }
+</script>
+
     
 </body>
 </html>

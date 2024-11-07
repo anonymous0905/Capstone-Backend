@@ -60,7 +60,7 @@ def predict_sections(text, model, tokenizer, mlb):
     # Output the matching sections and their corresponding texts
     return matching_sections
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=8000))
 channel = connection.channel()
 
 channel.queue_declare(queue='statute_verification_health')

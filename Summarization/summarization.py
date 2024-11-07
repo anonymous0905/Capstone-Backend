@@ -5,7 +5,7 @@ import json
 import requests
 from pyexpat.errors import messages
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=8000))
 channel = connection.channel()
 
 channel.queue_declare(queue='summarization_health')
@@ -47,7 +47,7 @@ def callback_summary(ch, method, properties, body):
         "inputs": text,
         "parameters": {}
     })
-    #TODO: Implement summarization logic here
+
     #message = '200 OK - Summary generated successfully'
     print(output)
     resp = json.dumps(output,default='str')

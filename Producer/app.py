@@ -12,7 +12,7 @@ app = Flask(
 
 
 # RabbitMQ connection setup
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=8000))
 channel = connection.channel()
 
 channel.queue_declare(queue='health_check')
@@ -70,6 +70,7 @@ def summary():
     inp_data = request.json['inputData']
     message = json.dumps({'inputData': inp_data})
     logging.info(message)
+    print(message)
     # Publish message to insert_record queue
     channel.basic_publish(exchange='', routing_key='summary', body=message)
 

@@ -2,7 +2,7 @@
 #!/usr/bin/env python
 import pika, sys, os
 import json
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=8000))
 channel = connection.channel()
 
 channel.queue_declare(queue='contract_health')

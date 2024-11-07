@@ -7,6 +7,7 @@ from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
 import pandas as pd
+from flask import Flask, request, render_template, g, jsonify
 import re
 from transformers import pipeline
 import spacy
@@ -108,13 +109,15 @@ def get_search_result_faiss(query: str, index, doc_ids, collection):
 
 faiss_index, document_ids = setup_faiss_index(collection)
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=8000))
 channel = connection.channel()
 
 channel.queue_declare(queue='precedent_search_health')
 channel.queue_declare(queue='precedent_search_health_return')
 channel.queue_declare(queue='precedent')
 channel.queue_declare(queue='precedent_return')
+channel.queue_declare(queue='summary')
+channel.queue_declare(queue='summary_return')
 
 def callback(ch, method, properties, body):
     print(" [x] Received %r" % body)
@@ -128,9 +131,21 @@ def callback(ch, method, properties, body):
 def callback_precedent(ch, method, properties, body):
     print(" [x] Received %r" % body)
     print(" [x] Done")
-    message = json.loads(body)
-    query = str(message['inputData'])
+    # message = json.loads(body)
+    # text = message['inputData']
     #TODO Summarisation CALL
+    channel.basic_publish(exchange='', routing_key='summary', body=body)
+
+    def callbackr(ch, method, properties, body):
+        body = body.decode()
+        data = json.loads(body)
+        g.summaryres = json.dumps(data, default=str)
+        channel.stop_consuming()
+
+    channel.basic_consume(queue='summary_return', on_message_callback=callbackr, auto_ack=True)
+
+    # copy the summary response to a variable
+    query = g.get('summaryres', 'Summary Not Found')
     query = query.replace("*", "")
     query = anonymize_text(query)
     query = preprocess_text(query)

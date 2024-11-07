@@ -5,7 +5,7 @@ import json
 
 from scipy.stats import false_discovery_control
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=8000))
 channel = connection.channel()
 #queue to send and receive health check messages from producer
 channel.queue_declare(queue='health_check')
