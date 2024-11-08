@@ -1,22 +1,19 @@
 #!/usr/bin/env python
-import pika
-import sys
-import os
+import pika, sys, os
 import json
+import requests
 import pymongo
 import torch
 from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
+import pandas as pd
 import re
 from transformers import pipeline
 import spacy
-from flask import g
 
-# Set up device
 device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
 
-# Load NLP models
 nlp = spacy.load("en_core_web_sm")
 try:
     embedding_model = SentenceTransformer("thenlper/gte-large").to(device)
@@ -25,47 +22,80 @@ except Exception as e:
 
 ner_model = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english", grouped_entities=True)
 
-# MongoDB setup
-mongo_uri = "mongodb://localhost:27017"
-mongo_client = pymongo.MongoClient(mongo_uri)
-db = mongo_client["Capstone"]
-collection = db["Summaries"]
 
-# Helper functions
 def detect_names_single_case(text):
     ner_results = ner_model(text)
-    processed_names = {token for entity in ner_results if entity["entity_group"] == "PER"
-                       for token in entity["word"].replace(".", " ").split() if len(token) > 1}
+
+    processed_names = set()
+    for entity in ner_results:
+        if entity["entity_group"] == "PER":
+            tokens = [token for token in entity["word"].replace(".", " ").split() if len(token) > 1]
+            processed_names.update(tokens)
+
     return list(processed_names)
+
 
 def anonymize_text(query):
     detected_names = detect_names_single_case(query)
     detected_names.sort(key=len, reverse=True)
     for idx, name in enumerate(detected_names):
         query = re.sub(r'\b' + re.escape(name) + r'\b', chr(65 + idx), query, flags=re.IGNORECASE)
+
     return query
+
 
 def preprocess_text(text):
     doc = nlp(text)
     processed_words = [token.lemma_.lower() for token in doc if not token.is_stop and not token.is_punct]
     return ' '.join(processed_words)
 
-def get_embedding(text):
+
+def get_mongo_client(mongo_uri):
+    try:
+        client = pymongo.MongoClient(mongo_uri)
+        print("Connection to MongoDB successful")
+        return client
+    except pymongo.errors.ConnectionFailure as e:
+        print(f"Connection failed: {e}")
+        return None
+
+
+mongo_uri = "mongodb://localhost:27017"
+mongo_client = get_mongo_client(mongo_uri)
+
+if mongo_client:
+    # Ingest data into MongoDB
+    db = mongo_client["Capstone"]
+    collection = db["Summaries"]
+else:
+    print("Failed to connect to MongoDB.")
+
+
+def get_embedding(text: str) -> list[float]:
     if not text.strip():
         print("Attempted to get embedding for empty text.")
         return []
+
     embedding = embedding_model.encode(text)
+
     return embedding.tolist()
 
+
 def setup_faiss_index(collection):
-    embeddings = [doc['embedding'] for doc in collection.find({}, {"embedding": 1, "_id": 1})]
-    doc_ids = [doc['_id'] for doc in collection.find({}, {"_id": 1})]
+    embeddings = []
+    doc_ids = []
+    for doc in collection.find({}, {"embedding": 1, "_id": 1}):
+        embeddings.append(doc['embedding'])
+        doc_ids.append(doc['_id'])
+
     embedding_matrix = np.array(embeddings).astype('float32')
     index = faiss.IndexFlatL2(embedding_matrix.shape[1])
     index.add(embedding_matrix)
+
     return index, doc_ids
 
-def vector_search_faiss(user_query, index, doc_ids, collection, top_k=4):
+
+def vector_search_faiss(user_query: str, index, doc_ids, collection, top_k=4):
     query_embedding = np.array([get_embedding(user_query)], dtype='float32')
     distances, indices = index.search(query_embedding, top_k)
     results = []
@@ -75,59 +105,93 @@ def vector_search_faiss(user_query, index, doc_ids, collection, top_k=4):
         similarity_score = 1 / (1 + dist)
         doc["similarity_score"] = similarity_score
         results.append(doc)
+
     return results
 
-def get_search_result_faiss(query, index, doc_ids, collection):
-    results = vector_search_faiss(query, index, doc_ids, collection)
-    return {i: f"Generated Summary: {result.get('generated_summary', 'N/A')}\n" +
-               f"Similarity Score: {result.get('similarity_score'):.4f}\n\n"
-            for i, result in enumerate(results)}
 
-# FAISS index setup
+def get_search_result_faiss(query: str, index, doc_ids, collection):
+    results = vector_search_faiss(query, index, doc_ids, collection)
+    search_result = {}
+    i = 0
+    for result in results:
+        search_result[
+            i] = f"Generated Summary: {result.get('generated_summary', 'N/A')}\n" + f"Similarity Score: {result.get('similarity_score'):.4f}\n\n"
+        i += 1
+    return search_result
+
+
 faiss_index, document_ids = setup_faiss_index(collection)
 
-# RabbitMQ connection
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=8000))
 channel = connection.channel()
+
+channel.queue_declare(queue='precedent_search_health')
+channel.queue_declare(queue='precedent_search_health_return')
 channel.queue_declare(queue='precedent')
-channel.queue_declare(queue='summary')
-channel.queue_declare(queue='summary_return')
 channel.queue_declare(queue='precedent_return')
 
-# Callback function with synchronous basic_get
+def summary(body):
+    print('Summary call sent')
+    message = json.loads(body)
+    text = message['inputData']
+    API_TOKEN = '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'
+    API_URL = "https://mz4m63dt514ihp7b.us-east-1.aws.endpoints.huggingface.cloud"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    def query(payload):
+        response = requests.post(API_URL, headers=headers, json=payload)
+        return response.json()
+
+    output = query({
+        "inputs": text,
+        "parameters": {}
+    })
+
+    # message = '200 OK - Summary generated successfully'
+    print(output)
+    resp = json.dumps(output, default='str')
+    print('Summary call received and returned')
+    return resp
+
+
+
+def callback(ch, method, properties, body):
+    print(" [x] Received %r" % body)
+    print(" [x] Done")
+    # ch.basic_ack(delivery_tag = method.delivery_tag)
+    message = '200 OK'
+    resp = json.dumps(message, default='str')
+    channel.basic_publish(exchange='', routing_key='precedent_search_health_return', body=resp)
+
+
 def callback_precedent(ch, method, properties, body):
     print(" [x] Received %r" % body)
+    print(" [x] Done")
+    call = summary(body)
+    message = json.loads(call)
+    query = str(message['summary'])
 
-    # Publish message to summary queue
-    channel.basic_publish(exchange='', routing_key='summary', body=body)
-    method_frame, header_frame, response_body = channel.basic_get(queue='summary_return', auto_ack=True)
-    if method_frame:
-        response_body = response_body.decode()
-        data = json.loads(response_body)
-        summary_result = json.dumps(data, default=str)
-    else:
-        summary_result = json.dumps({'error': 'Summary Not Found'})
-
-    # Process the summary result
-    parsed_data = json.loads(summary_result)
-    print(parsed_data)
-    query = parsed_data.get("summary", "").replace("*", "")
+    query = query.replace("*", "")
+    print(query)
     query = anonymize_text(query)
     query = preprocess_text(query)
-
-    # Perform vector search with FAISS
     search_results = get_search_result_faiss(query, faiss_index, document_ids, collection)
-    response_message = json.dumps(search_results)
+    #message = '200 OK - precedent search successful'
+    resp = json.dumps(search_results)
+    channel.basic_publish(exchange='', routing_key='precedent_return', body=resp)
 
-    # Publish the search results to the precedent_return queue
-    channel.basic_publish(exchange='', routing_key='precedent_return', body=response_message)
-    print(" [x] Precedent search completed and response sent.")
 
-# Main function to consume messages
 def main():
+    channel.basic_consume(queue='precedent_search_health', on_message_callback=callback, auto_ack=True)
     channel.basic_consume(queue='precedent', on_message_callback=callback_precedent, auto_ack=True)
+
     print(' [*] Waiting for messages. To exit press CTRL+C')
     channel.start_consuming()
+
 
 if __name__ == '__main__':
     try:

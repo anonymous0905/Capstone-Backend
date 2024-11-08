@@ -3,7 +3,10 @@ import time
 from flask import Flask, request, render_template, g, jsonify
 import pika
 import json
+from transformers import AutoTokenizer
+
 import queue
+tokenizer = AutoTokenizer.from_pretrained("google/gemma-2-2b-it")
 
 app = Flask(
     __name__,
@@ -68,9 +71,17 @@ def health_check():
 @app.route('/summary', methods=['POST'])
 def summary():
     inp_data = request.json['inputData']
-    message = json.dumps({'inputData': inp_data})
+
+    # Tokenize input data
+    tokens = tokenizer(inp_data, truncation=True, max_length=6000, return_tensors='pt', padding=False)
+
+    # Decode tokens back to text (up to 6000 tokens if truncated)
+    truncated_data = tokenizer.decode(tokens['input_ids'][0], skip_special_tokens=True)
+
+    # Prepare message with truncated data
+    message = json.dumps({'inputData': truncated_data})
     logging.info(message)
-    #print(message)
+
     # Publish message to insert_record queue
     channel.basic_publish(exchange='', routing_key='summary', body=message)
 
@@ -82,13 +93,7 @@ def summary():
 
     channel.basic_consume(queue='summary_return', on_message_callback=callback, auto_ack=True)
     channel.start_consuming()
-    #qry = g.get('summaryres', 'No data received')
-    #print(qry)
-    #parsed_data = json.loads(qry)
 
-    # Extract the "summary" text
-    #summary_text = parsed_data["summary"]
-    #print(summary_text)
     return g.get('summaryres', 'No data received')
 
 #Contract verification endpoint
@@ -113,7 +118,7 @@ def contract():
 #Precedent search endpoint
 @app.route('/precedent', methods=['POST'])
 def precedent():
-    inp_data = request.form['inputData']
+    inp_data = request.json['inputData']
     message = json.dumps({'inputData': inp_data})
     logging.info(message)
     channel.basic_publish(exchange='', routing_key='precedent', body=message)
