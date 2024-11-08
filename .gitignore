@@ -1,6 +1,3 @@
-# Ignore model weights file
 Statute_verification/model_epoch_weighted_29.pt
-
-# Ignore JSON files
 Statute_verification/secs.json
 Statute_verification/train.jsonl
