@@ -66,6 +66,7 @@ def health_check():
 @app.route('/summary', methods=['POST'])
 def summary():
     inp_data = request.json['inputData']
+
     message = json.dumps({'inputData': inp_data})
     logging.info(message)
     # Publish message to insert_record queue
@@ -106,6 +107,7 @@ def precedent():
     inp_data = request.form['inputData']
     message = json.dumps({'inputData': inp_data})
     logging.info(message)
+
     channel.basic_publish(exchange='', routing_key='precedent', body=message)
 
     def callback(ch, method, properties, body):

@@ -10,6 +10,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+
             justify-content: flex-start; /* Changed from center to allow natural page flow */
             min-height: 100vh;
             margin: 0;
@@ -24,7 +25,9 @@
         textarea {
             padding: 10px;
             width: 600px;
+
             height: 100px;
+
             border: 1px solid #ccc;
             border-radius: 5px;
             margin-bottom: 20px;
@@ -62,6 +65,7 @@
             height: 150px;
         }
     </style>
+
 </head>
 <body>
     <h3>Enter Data and Choose a Route:</h3>
@@ -73,6 +77,8 @@
     <button onclick="sendData('/contract')">Contract verification</button>
     
     <div id="output"></div>
+
+
 
     <script>
         function sendData(route) {
@@ -87,6 +93,7 @@
             .then(response => response.json())
             .then(result => {
                 console.log("Success:", result);
+
                 const outputDiv = document.getElementById("output");
                 outputDiv.innerHTML = ""; // Clear previous output
     
@@ -110,13 +117,16 @@
                     textBox.value = JSON.stringify(result, null, 2);  // Just stringify the result for other routes
                     outputDiv.appendChild(textBox);
                 }
+
             })
             .catch(error => {
                 console.error("Error:", error);
                 document.getElementById("output").innerText = "Error: " + error;
             });
         }
+
     </script>    
     
 </body>
 </html>
+

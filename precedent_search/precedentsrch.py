@@ -128,6 +128,7 @@ def callback(ch, method, properties, body):
 def callback_precedent(ch, method, properties, body):
     print(" [x] Received %r" % body)
     print(" [x] Done")
+
     message = json.loads(body)
     query = str(message['inputData'])
     #TODO Summarisation CALL
@@ -137,6 +138,7 @@ def callback_precedent(ch, method, properties, body):
     search_results = get_search_result_faiss(query, faiss_index, document_ids, collection)
     message = '200 OK - precedent search successful'
     resp = json.dumps(search_results)
+
     channel.basic_publish(exchange='', routing_key='precedent_return', body=resp)
 
 def main():
