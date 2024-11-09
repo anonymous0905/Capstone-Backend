@@ -5,7 +5,9 @@ import json
 import requests
 from pyexpat.errors import messages
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=8000))
+
 channel = connection.channel()
 
 channel.queue_declare(queue='summarization_health')
@@ -27,10 +29,9 @@ def callback(ch, method, properties, body):
 def callback_summary(ch, method, properties, body):
     print(" [x] Received %r" % body)
     print(" [x] Done")
-    # ch.basic_ack(delivery_tag = method.delivery_tag)
-    #extract the message from the body
+
     message = json.loads(body)
-    #print(message)
+
     text = message['inputData']
     #print(text)
 
@@ -43,7 +44,6 @@ def callback_summary(ch, method, properties, body):
     }
 
     def query(payload):
-        print("message sent")
         response = requests.post(API_URL, headers=headers, json=payload)
         return response.json()
 
@@ -51,8 +51,8 @@ def callback_summary(ch, method, properties, body):
         "inputs": text,
         "parameters": {}
     })
-    print("message received")
     #message = '200 OK - Summary generated successfully'
+    print(output)
     resp = json.dumps(output,default='str')
     channel.basic_publish(exchange='', routing_key='summary_return', body=resp)
 

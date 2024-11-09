@@ -1,9 +1,9 @@
 import logging
 import time
-from flask import Flask, request, render_template, g
+from flask import Flask, request, render_template, g, jsonify
 import pika
 import json
-import queue  # Import the queue module
+import queue
 
 app = Flask(
     __name__,
@@ -12,7 +12,7 @@ app = Flask(
 
 
 # RabbitMQ connection setup
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=8000))
 channel = connection.channel()
 
 channel.queue_declare(queue='health_check')
@@ -25,8 +25,6 @@ channel.queue_declare(queue='precedent')
 channel.queue_declare(queue='precedent_return')
 channel.queue_declare(queue='statute')
 channel.queue_declare(queue='statute_return')
-
-
 
 
 @app.route('/')
@@ -67,7 +65,8 @@ def health_check():
 # Generate summary endpoint
 @app.route('/summary', methods=['POST'])
 def summary():
-    inp_data = request.form['inputData']
+    inp_data = request.json['inputData']
+
     message = json.dumps({'inputData': inp_data})
     logging.info(message)
     # Publish message to insert_record queue
@@ -108,7 +107,7 @@ def precedent():
     inp_data = request.form['inputData']
     message = json.dumps({'inputData': inp_data})
     logging.info(message)
-    # Publish message to insert_record queue
+
     channel.basic_publish(exchange='', routing_key='precedent', body=message)
 
     def callback(ch, method, properties, body):
@@ -120,6 +119,7 @@ def precedent():
     channel.basic_consume(queue='precedent_return', on_message_callback=callback, auto_ack=True)
     channel.start_consuming()
     return g.get('precedentres', 'No data received')
+
 
 #Statute verification endpoint
 @app.route('/statute', methods=['POST'])
