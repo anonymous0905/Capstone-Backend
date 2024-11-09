@@ -108,7 +108,7 @@ def get_search_result_faiss(query: str, index, doc_ids, collection):
 
 faiss_index, document_ids = setup_faiss_index(collection)
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=8000))
 channel = connection.channel()
 
 channel.queue_declare(queue='precedent_search_health')

@@ -12,7 +12,7 @@ app = Flask(
 
 
 # RabbitMQ connection setup
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=8000))
 channel = connection.channel()
 
 channel.queue_declare(queue='health_check')
@@ -25,8 +25,6 @@ channel.queue_declare(queue='precedent')
 channel.queue_declare(queue='precedent_return')
 channel.queue_declare(queue='statute')
 channel.queue_declare(queue='statute_return')
-
-
 
 
 @app.route('/')
