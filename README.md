@@ -17,4 +17,4 @@ Contract_verification > contract_verify.py
 
 *Note* - The API_Token in summarization.py needs to be updated since the endpoint has been disabled and the Token invalidated.
 
-Codebase for bthe ackend is also publicly available at - https://github.com/anonymous0905/Capstone-Backend
+Codebase for the backend is also publicly available at - https://github.com/anonymous0905/Capstone-Backend
